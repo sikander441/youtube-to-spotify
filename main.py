@@ -36,13 +36,15 @@ class SaveYoutubePlaylist:
     fi=0
     li=0
     url=""
+    outDir=""
 
     # class methods, also accesible by objects
-    def __init__(self,fi,li,url):
+    def __init__(self,fi,li,url,outDir):
         self.youtube = self.get_youtube_client()
         self.firstIndex=fi
         self.lastIndex=li
         self.playlistUrl=url
+        self.output_dir = outDir
 
     # returns the youtube client
     def get_youtube_client(self):
@@ -57,7 +59,7 @@ class SaveYoutubePlaylist:
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
-        'outtmpl': '%(title)s.%(ext)s',
+        'outtmpl': self.output_dir+'/%(title)s.%(ext)s',
         'logger': DownloadLogger(),
         'playlistend':self.lastIndex,
         'playliststart':self.firstIndex,
@@ -72,7 +74,7 @@ if __name__ == "__main__":
     # parse arguments
     arg_parser = argparse.ArgumentParser(description="Download music from any playlist on youtube,You can select range of video to download by giving the starting and ending video number")
     arg_parser.add_argument("-u", "--playlist-url", type=str, help="url of playlist to download")
-    arg_parser.add_argument("-o", "--output-dir", type=str, help="output directory to download songs in")
+    arg_parser.add_argument("-o", "--output-dir", type=str, help="output directory to download songs in (Default if not given is folder named out in current directory )")
     arg_parser.add_argument("-fi", "--first-index", type=str, help="Starting index of the video to download from playlist, Default value if not given is 50")
     arg_parser.add_argument("-li", "--last-index", type=str, help="Last index of video to download from playlist, Default value if not given is 50")
     args = arg_parser.parse_args()
@@ -86,11 +88,17 @@ if __name__ == "__main__":
         firstIndex=1
     if(lastIndex == None):
         lastIndex=50
+    if(output_dir == None):
+        output_dir='out'
 
-    print('Downloading Playlist from index ',firstIndex,' to ',lastIndex)
-    save_youtube = SaveYoutubePlaylist(int(firstIndex),int(lastIndex),playlistUrl)
+
+    print('Downloading Playlist from index: ',firstIndex,' to ',lastIndex)
+    print('Downloading files in directory: '+output_dir )
+    save_youtube = SaveYoutubePlaylist(int(firstIndex),int(lastIndex),playlistUrl,output_dir)
     hook_call_counter=0
     save_youtube.download_videos()
+
+
 
 
 """

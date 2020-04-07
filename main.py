@@ -2,6 +2,10 @@ import os
 import argparse
 import googleapiclient.discovery
 import youtube_dl
+from urllib.parse import urlparse,parse_qs
+import json
+
+
 
 class DownloadLogger(object):
         def debug(self, msg):
@@ -13,42 +17,37 @@ class DownloadLogger(object):
         def error(self, msg):
             print(msg)
 
-def ydl_progress_hook(d):
-    if d['status'] == 'finished':
-        print(f'Downloading { d["filename"] } finished, now converting ...')
 
-class SaveYoutube:
+def ydl_progress_hook(d):
+    global hook_call_counter
+    if d['status'] == 'downloading':
+     if hook_call_counter == 0:
+        print('\n'+'--'*65)
+        print('\nCurrently downloading: '+d['filename'].upper())
+        hook_call_counter+=1
+    if d['status'] == 'finished':
+        hook_call_counter=0
+        print(f'Finished Downloading { d["filename"].upper() } , now converting ...')
+        print('\n'+'--'*65)
+
+class SaveYoutubePlaylist:
     # class variables
-    api_key = os.environ.get("YOUTUBE_API_KEY") 
+    api_key = os.environ.get("YOUTUBE_API_KEY")
+    fi=0
+    li=0
+    url=""
 
     # class methods, also accesible by objects
-    def __init__(self):
+    def __init__(self,fi,li,url):
         self.youtube = self.get_youtube_client()
-        self.videos = []
+        self.firstIndex=fi
+        self.lastIndex=li
+        self.playlistUrl=url
 
     # returns the youtube client
     def get_youtube_client(self):
+        print("picked up API_KEY:"+self.api_key)
         return googleapiclient.discovery.build('youtube', 'v3', developerKey=self.api_key)
-
-    # populates videos list with title and id of videos in the playlist
-    def get_playlist_videos(self, playlist_id):
-        request = self.youtube.playlistItems().list(
-            part="snippet",
-            maxResults=50,
-            playlistId=playlist_id
-        )
-        # add support for fetching next page contents as well, only 50 results supported for now, check 'pageInfo' in response
-        response = request.execute()
-        for item in response["items"]:
-            video = {}
-            video["title"] = item["snippet"]["title"]
-            video["id"] = item["snippet"]["resourceId"]["videoId"]
-            self.videos.append(video)
-
-    # transform the {title, id} array to {title, url}
-    def make_youtube_urls(self):
-        for video in self.videos:
-            video["url"] = "https://www.youtube.com/watch?v=" + video["id"]
 
     def download_videos(self):
         ydl_opts = {
@@ -60,40 +59,41 @@ class SaveYoutube:
             }],
         'outtmpl': '%(title)s.%(ext)s',
         'logger': DownloadLogger(),
+        'playlistend':self.lastIndex,
+        'playliststart':self.firstIndex,
         'progress_hooks': [ydl_progress_hook],
+
         }
         ydl = youtube_dl.YoutubeDL(ydl_opts)
-
-        for video in self.videos:
-            ydl.download([video["url"]])
+        print(self.playlistUrl)
+        ydl.download([self.playlistUrl])
 
 if __name__ == "__main__":
     # parse arguments
-    arg_parser = argparse.ArgumentParser(description="Download music from any playlist on youtube")
-    arg_parser.add_argument("-p", "--playlist-id", type=str, help="id of playlist to download")
+    arg_parser = argparse.ArgumentParser(description="Download music from any playlist on youtube,You can select range of video to download by giving the starting and ending video number")
     arg_parser.add_argument("-u", "--playlist-url", type=str, help="url of playlist to download")
     arg_parser.add_argument("-o", "--output-dir", type=str, help="output directory to download songs in")
+    arg_parser.add_argument("-fi", "--first-index", type=str, help="Starting index of the video to download from playlist, Default value if not given is 50")
+    arg_parser.add_argument("-li", "--last-index", type=str, help="Last index of video to download from playlist, Default value if not given is 50")
     args = arg_parser.parse_args()
 
-    playlist_id = args.playlist_id
-    playlist_url = args.playlist_url
+    playlistUrl = args.playlist_url
     output_dir = args.output_dir
-    # playlist_id = "PLzMsvNpDYBM7ZdOvJdNVZkDhh9RHPkatv"
-    # id for my 'new music' playlist
-    playlist_id = "PLzMsvNpDYBM4DzLBWSuksozXUpDZxCyFD"
+    firstIndex = args.first_index
+    lastIndex = args.last_index
 
-    save_youtube = SaveYoutube()
-    save_youtube.get_playlist_videos(playlist_id)
-    save_youtube.make_youtube_urls()
-    print(save_youtube.videos)
+    if(firstIndex == None):
+        firstIndex=1
+    if(lastIndex == None):
+        lastIndex=50
+
+    print('Downloading Playlist from index ',firstIndex,' to ',lastIndex)
+    save_youtube = SaveYoutubePlaylist(int(firstIndex),int(lastIndex),playlistUrl)
+    hook_call_counter=0
     save_youtube.download_videos()
 
 
 """
-enhancements:
-    get the full playlist link and then extract the playlist id yourself.
-
-    support for liked playlist, private playlists, watch later: would have to use google user authentication for  that.
 
     ***change download path to use the argument given instead of downloading in current dir.
     if unable to find option in youtube-dl, just change the current directory before calling download.

@@ -20,3 +20,4 @@ optional arguments:
 Dependencies:
 1. pip3 install google-api-python-client
 2. pip3 install youtube_dl
+3 sudo apt-get install ffmpeg

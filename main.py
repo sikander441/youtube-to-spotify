@@ -2,9 +2,6 @@ import os
 import argparse
 import googleapiclient.discovery
 import youtube_dl
-from urllib.parse import urlparse,parse_qs
-import json
-
 
 
 class DownloadLogger(object):
@@ -73,7 +70,7 @@ class SaveYoutubePlaylist:
 if __name__ == "__main__":
     # parse arguments
     arg_parser = argparse.ArgumentParser(description="Download music from any playlist on youtube,You can select range of video to download by giving the starting and ending video number")
-    arg_parser.add_argument("-u", "--playlist-url", type=str, help="url of playlist to download")
+    arg_parser.add_argument("-u", "--playlist-url", type=str, help="url of playlist to download",required=True)
     arg_parser.add_argument("-o", "--output-dir", type=str, help="output directory to download songs in (Default if not given is folder named out in current directory )")
     arg_parser.add_argument("-fi", "--first-index", type=str, help="Starting index of the video to download from playlist, Default value if not given is 50")
     arg_parser.add_argument("-li", "--last-index", type=str, help="Last index of video to download from playlist, Default value if not given is 50")
